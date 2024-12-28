@@ -6,6 +6,7 @@
     "module": "ESNext",
     "target": "ES6",
     "allowJs": true,
+    "allowSyntheticDefaultImports": true,
     "noImplicitAny": true,
     "moduleResolution": "node",
     "importHelpers": true,
@@ -16,7 +17,8 @@
       "ES5",
       "ES6",
       "ES7"
-    ]
+    ],
+    "jsx": "react" // Add this line
   },
   "include": [
     "**/*.ts"
