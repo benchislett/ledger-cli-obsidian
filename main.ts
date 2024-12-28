@@ -1,25 +1,158 @@
-import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
+import { App, TextFileView, TFile, ViewState, WorkspaceLeaf, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, FileSystemAdapter } from 'obsidian';
+import React from 'react';
+import { Dashboard } from './dash';
+import { invoke_ledger } from './invoke';
+
+import { createRoot } from 'react-dom/client';
+
+export class LedgerView extends TextFileView {
+	private readonly plugin: MyPlugin;
+	private currentFilePath: string | null;
+
+	constructor(leaf: WorkspaceLeaf, plugin: MyPlugin) {
+		super(leaf);
+		this.plugin = plugin;
+		this.currentFilePath = null;
+
+		this.addAction('pencil', 'Switch to Markdown View', () => {
+			const state = leaf.view.getState();
+			leaf.setViewState(
+				{
+					type: 'markdown',
+					state,
+					popstate: true,
+				} as ViewState,
+				{ focus: true },
+			);
+		});
+
+		this.redraw();
+	}
+
+	public canAcceptExtension(extension: string): boolean {
+		return extension === 'ledger';
+	}
+
+	public getViewType(): string {
+		return "ledger";
+	}
+
+	public getDisplayText(): string {
+		return 'Ledger';
+	}
+
+	public getIcon(): string {
+		return 'ledger';
+	}
+
+	public getViewData(): string {
+		console.debug('Ledger: returning view data');
+		return this.data;
+	}
+
+	public setViewData(data: string, clear: boolean): void {
+		console.debug('Ledger: setting view data');
+	}
+
+	public clear(): void {
+		console.debug('Ledger: clearing view');
+	}
+
+	public onload(): void {
+		console.debug('Ledger: loading dashboard');
+	}
+
+	public onunload(): void {
+		console.debug('Ledger: unloading dashboard');
+	}
+
+	public async onLoadFile(file: TFile): Promise<void> {
+		console.debug('Ledger: File being loaded: ' + file.path);
+
+		// if (this.currentFilePath !== file.path) {
+		this.currentFilePath = file.path;
+		this.redraw();
+		// }
+	}
+
+	public async onUnloadFile(file: TFile): Promise<void> {
+		console.debug('Ledger: File being unloaded: ' + file.path);
+	}
+
+	public readonly redraw = (): void => {
+		console.debug('Ledger: Creating dashboard view');
+
+		const contentEl = this.containerEl.children[1];
+
+		if (this.currentFilePath) {
+			console.debug('Ledger: Dashboard file is available');
+			const root = createRoot(contentEl!);
+			root.render(React.createElement(Dashboard, { exePath: this.plugin.settings.ledgerPath, filePath: this.plugin.rootPath() + "/" + this.currentFilePath }));
+			// contentEl.empty();
+			// const span = contentEl.createSpan();
+			// span.setText('Content...');
+		} else {
+			console.debug("Ledger: Dashboard view doesn't have a file yet");
+			contentEl.empty();
+			const span = contentEl.createSpan();
+			span.setText('Loading...');
+		}
+	};
+}
+
 
 // Remember to rename these classes and interfaces!
 
 interface MyPluginSettings {
-	mySetting: string;
+	ledgerPath: string;
+	ledgerFile: string;
 }
 
 const DEFAULT_SETTINGS: MyPluginSettings = {
-	mySetting: 'default'
+	ledgerPath: '/bin/ledger',
+	ledgerFile: 'transactions.ledger',
 }
 
 export default class MyPlugin extends Plugin {
 	settings: MyPluginSettings;
 
+	rootPath(): string | null {
+		let adapter = this.app.vault.adapter;
+		if (adapter instanceof FileSystemAdapter) {
+			return adapter.getBasePath();
+		}
+		return null;
+	}
+
+	currentFile(abspath: boolean = true): string | null {
+		const file = this.app.workspace.getActiveFile()?.path;
+		if (file && abspath) {
+			const root = this.rootPath();
+			return root ? root + "/" + file : null;
+		}
+		return file || null;
+	}
+
 	async onload() {
 		await this.loadSettings();
 
 		// This creates an icon in the left ribbon.
-		const ribbonIconEl = this.addRibbonIcon('dice', 'Sample Plugin', (evt: MouseEvent) => {
+		const ribbonIconEl = this.addRibbonIcon('dice', 'Sample Plugin', async (evt: MouseEvent) => {
+			const file = this.currentFile();
+
+			if (file && file.endsWith(".ledger")) {
+				new Notice(`Ledger path: ${this.settings.ledgerPath}`);
+				const output = await invoke_ledger(this.settings.ledgerPath, file, ["--version"]);
+				new Notice(output);
+			} else {
+				if (!file) {
+					new Notice(`Open a ledger file`);
+				} else {
+					new Notice(`Not a ledger file: ${this.currentFile(false)}`);
+				}
+			}
 			// Called when the user clicks the icon.
-			new Notice('This is a notice!');
+			// new Notice('This is a notice!');
 		});
 		// Perform additional things with the ribbon
 		ribbonIconEl.addClass('my-plugin-ribbon-class');
@@ -68,6 +201,10 @@ export default class MyPlugin extends Plugin {
 		// This adds a settings tab so the user can configure various aspects of the plugin
 		this.addSettingTab(new SampleSettingTab(this.app, this));
 
+		this.registerView("ledger", (leaf) => new LedgerView(leaf, this));
+
+		this.registerExtensions(['ledger'], "ledger");
+
 		// If the plugin hooks up any global DOM events (on parts of the app that doesn't belong to this plugin)
 		// Using this function will automatically remove the event listener when this plugin is disabled.
 		this.registerDomEvent(document, 'click', (evt: MouseEvent) => {
@@ -79,7 +216,6 @@ export default class MyPlugin extends Plugin {
 	}
 
 	onunload() {
-
 	}
 
 	async loadSettings() {
@@ -97,12 +233,12 @@ class SampleModal extends Modal {
 	}
 
 	onOpen() {
-		const {contentEl} = this;
+		const { contentEl } = this;
 		contentEl.setText('Woah!');
 	}
 
 	onClose() {
-		const {contentEl} = this;
+		const { contentEl } = this;
 		contentEl.empty();
 	}
 }
@@ -116,18 +252,29 @@ class SampleSettingTab extends PluginSettingTab {
 	}
 
 	display(): void {
-		const {containerEl} = this;
+		const { containerEl } = this;
 
 		containerEl.empty();
 
 		new Setting(containerEl)
-			.setName('Setting #1')
-			.setDesc('It\'s a secret')
+			.setName('Ledger CLI Executable Path')
+			.setDesc('Path to the ledger CLI executable. Must be installed on your system for this plugin to work. You can locate it by running "which ledger" in your terminal.')
 			.addText(text => text
-				.setPlaceholder('Enter your secret')
-				.setValue(this.plugin.settings.mySetting)
+				.setPlaceholder(DEFAULT_SETTINGS.ledgerPath)
+				.setValue(this.plugin.settings.ledgerPath)
 				.onChange(async (value) => {
-					this.plugin.settings.mySetting = value;
+					this.plugin.settings.ledgerPath = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('Ledger Transaction File')
+			.setDesc('Path to the ledger transaction file. This file will be used to generate the ledger dashboard.')
+			.addText(text => text
+				.setPlaceholder(DEFAULT_SETTINGS.ledgerFile)
+				.setValue(this.plugin.settings.ledgerFile)
+				.onChange(async (value) => {
+					this.plugin.settings.ledgerFile = value;
 					await this.plugin.saveSettings();
 				}));
 	}
