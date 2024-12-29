@@ -48,14 +48,40 @@ function addMonths(date: MyDate, months: number): MyDate {
     return newDate;
 }
 
+function addWeeks(date: MyDate, weeks: number): MyDate {
+    let newDate = { year: date.year, month: date.month, day: date.day + weeks * 7 };
+    if (newDate.day > 30) {
+        newDate.month += Math.floor(newDate.day / 30);
+        newDate.day = newDate.day % 30;
+    }
+    return newDate;
+}
+
+function formatDate(date: MyDate): string {
+    return `${date.year}/${date.month}/${date.day}`;
+}
+
 function dollarFormatter(n: number, _?: any): string {
-    console.debug(_);
     return "$" + n.toFixed(2);
 }
 
 function dollarStrFormatter(s: string): string {
     return "$" + Number.parseFloat(s).toFixed(2);
 }
+
+export const Button: React.FC<{
+    selected: boolean;
+    action?: () => void;
+  }> = (props): React.JSX.Element => {
+    const className = [props.selected ? 'mod-cta' : null]
+      .filter((n) => n)
+      .join(' ');
+    return (
+      <button className={className} onClick={props.action}>
+        {(props as any).children}
+      </button>
+    );
+  };
 
 const ApexChart = (expenseSummaries: ExpenseSummary[]) => {
     const height = 600;
@@ -151,16 +177,29 @@ interface DashboardProps {
 
 const Dashboard: React.FC<DashboardProps> = ({ exePath, filePath }) => {
     const [output, setOutput] = useState<ExpenseSummary[]>([]);
+    const [weekly, setWeekly] = useState<boolean>(false);
+    const [monthly, setMonthly] = useState<boolean>(true);
+    const [startDate, setStartDate] = useState<MyDate>({ year: 2024, month: 12, day: 1 });
+
     useEffect(() => {
         async function getOutput() {
-            const rawOutput = await invoke_ledger(exePath, filePath, ['bal', "^Expenses", "--period", "'from 2024/12/01 to 2025/01/01'", "--format", "\"%(account),%(amount)\\n\"", "--flat"]);
+            const endDate = (weekly ? addWeeks : addMonths)(startDate, 1);
+            const rawOutput = await invoke_ledger(exePath, filePath, ['bal', "^Expenses", "--period", `'from ${formatDate(startDate)} to ${formatDate(endDate)}'`, "--format", "\"%(account),%(amount)\\n\"", "--flat"]);
             const expenses = parseLedgerOutput(rawOutput);
             console.debug("Parsed expenses: ", JSON.stringify(expenses));
             setOutput(expenses);
         }
         getOutput();
-    }, []);
-    return ApexChart(output);
+    }, [startDate]);
+
+    return <div>
+        <Button selected={weekly} action={() => { setWeekly(true); setMonthly(false); }}>Weekly</Button>
+        <Button selected={monthly} action={() => { setWeekly(false); setMonthly(true); }}>Monthly</Button>
+        <Button action={() => { setStartDate((weekly ? addWeeks : addMonths)(startDate, -1)); }}>Previous</Button>
+        <Button action={() => { setStartDate((weekly ? addWeeks : addMonths)(startDate, 1)); }}>Next</Button>
+        <div>From {formatDate(startDate)}</div>
+        {ApexChart(output)}
+    </div>
 };
 
 export { Dashboard };
