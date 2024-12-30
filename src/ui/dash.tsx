@@ -249,7 +249,7 @@ const Dashboard: React.FC<DashboardProps> = ({ exePath, filePath }) => {
             const startDateString = formatDate(startDate);
             console.debug("Getting output for date: ", startDateString);
             const endDateString = formatDate(spanNext(startDate, period));
-            const rawOutput = await invoke_ledger(exePath, filePath, ['bal', "^Expenses", "--period", `'from ${startDateString} to ${endDateString}'`, "--format", "\"%(account),%(amount)\\n\"", "--flat"]);
+            const rawOutput = await invoke_ledger(exePath, filePath, ['bal', "^Expenses", "--period", `'from ${startDateString} to ${endDateString}'`, "--format", "\"%(account),%(amount)\\n\"", "--flat", "--basis"]);
             const expenses = parseLedgerOutput(rawOutput);
             console.debug("Parsed expenses: ", JSON.stringify(expenses));
             setOutput(expenses);
