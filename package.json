@@ -4,8 +4,12 @@
 	"description": "This is a sample plugin for Obsidian (https://obsidian.md)",
 	"main": "main.js",
 	"scripts": {
-		"dev": "node esbuild.config.mjs",
-		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
+		"dev": "concurrently \"npm run dev-js\" \"npm run dev-css\"",
+		"dev-js": "node esbuild.config.mjs",
+		"dev-css": "tailwindcss -i main.css -o styles.css --watch",
+		"build": "concurrently \"npm run build-js\" \"npm run build-css\"",
+		"build-js": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
+		"build-css": "tailwindcss -i src/styles.css -o styles.css",
 		"version": "node version-bump.mjs && git add manifest.json versions.json"
 	},
 	"keywords": [],
@@ -18,6 +22,7 @@
 		"@typescript-eslint/eslint-plugin": "5.29.0",
 		"@typescript-eslint/parser": "5.29.0",
 		"builtin-modules": "3.3.0",
+		"concurrently": "^9.1.1",
 		"esbuild": "0.17.3",
 		"obsidian": "latest",
 		"tslib": "2.4.0",
@@ -25,8 +30,15 @@
 	},
 	"dependencies": {
 		"apexcharts": "^4.3.0",
+		"autoprefixer": "^10.4.20",
+		"esbuild-plugin-postcss2": "^0.1.2",
+		"esbuild-postcss": "^0.0.4",
+		"moment": "^2.30.1",
+		"postcss": "^8.4.49",
 		"react": "^19.0.0",
 		"react-apexcharts": "^1.7.0",
-		"react-dom": "^19.0.0"
+		"react-datepicker": "^7.5.0",
+		"react-dom": "^19.0.0",
+		"tailwindcss": "^3.4.17"
 	}
 }

@@ -1,6 +1,8 @@
+import './styles.css'
+
 import { App, TextFileView, TFile, ViewState, WorkspaceLeaf, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, FileSystemAdapter } from 'obsidian';
 import React from 'react';
-import { Dashboard } from './dash';
+import { Dashboard } from './ui/dash';
 import { invoke_ledger } from './invoke';
 
 import { createRoot } from 'react-dom/client';
