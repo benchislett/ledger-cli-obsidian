@@ -21,10 +21,10 @@ const SettingsButton: React.FC<SettingsButtonProps> = ({
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className="relative inline-block">
+    <div className="flex relative inline-block">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`p-3 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors ${buttonClassName}`}
+        className={`px-3 py-4 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors ${buttonClassName}`}
       >
         <Settings className="w-6 h-6" />
       </button>

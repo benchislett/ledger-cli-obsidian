@@ -111,7 +111,7 @@ export const Button: React.FC<{
     action?: () => void;
     children?: React.ReactNode;
 }> = (props): React.JSX.Element => {
-    const className = ["px-4 py-2 rounded-md shadow", props.selected ? 'mod-cta' : null, "transition duration-300 ease-in-out transform hover:scale-105"]
+    const className = ["px-4 py-2 rounded-md shadow", props.selected ? 'mod-cta' : null]
         .filter((n) => n)
         .join(' ');
     // const className = props.selected ? "mod-cta" : null;
@@ -142,9 +142,10 @@ const Picker: React.FC<{
 };
 
 
-const ApexChart = (expenseSummaries: ExpenseSummary[], collectBottomLevel: boolean = false) => {
+const ApexChart = (expenseSummaries: ExpenseSummary[], bar: boolean, collectBottomLevel: boolean) => {
     const height = 600;
-    let series = [];
+    let series: any = [];
+    let options: any = {};
     let categories: string[] = [];
     let categoryForAccount: { [account: string]: string } = {};
     let i = 0;
@@ -159,69 +160,101 @@ const ApexChart = (expenseSummaries: ExpenseSummary[], collectBottomLevel: boole
         categoryForAccount[expense.account] = category;
     }
 
-    for (const expense of expenseSummaries) {
-        let subseries = Array.from({ length: categories.length }, () => 0);
-        const index = categories.indexOf(categoryForAccount[expense.account]);
-        subseries[index] = expense.amount;
-        series.push({ name: expense.account, data: subseries });
-    }
+    if (bar) {
+        for (const expense of expenseSummaries) {
+            let subseries = Array.from({ length: categories.length }, () => 0);
+            const index = categories.indexOf(categoryForAccount[expense.account]);
+            subseries[index] = expense.amount;
+            series.push({ name: expense.account, data: subseries });
+        }
 
-    const options = {
-        chart: {
-            type: 'bar',
-            height: height,
-            stacked: true,
-            toolbar: {
-                show: true
-            },
-            zoom: {
-                enabled: false
-            }
-        },
-        dataLabels: {
-            formatter: expenseSummaries.length === 0 ? (_1: any, _2: any) => "no data" : dollarFormatter,
-            style: {
-                fontSize: '13px',
-                fontWeight: 450
-            },
-        },
-        plotOptions: {
-            bar: {
-                horizontal: false,
-                borderRadius: 10,
-                borderRadiusApplication: 'end', // 'around', 'end'
-                borderRadiusWhenStacked: 'last', // 'all', 'last'
-                dataLabels: {
-                    position: 'center',
-                    total: {
-                        enabled: true,
-                        style: {
-                            fontSize: '13px',
-                            fontWeight: 450
-                        },
-                    },
+        options = {
+            chart: {
+                type: 'bar',
+                height: height,
+                stacked: true,
+                toolbar: {
+                    show: true
+                },
+                zoom: {
+                    enabled: false
                 }
             },
-        },
-        xaxis: {
-            categories,
-        },
-        yaxis: {
-            labels: { formatter: expenseSummaries.length === 0 ? (_1: any, _2: any) => "no data" : dollarFormatter }, // two decimal points
-        },
-        fill: {
-            opacity: 1
+            dataLabels: {
+                formatter: expenseSummaries.length === 0 ? (_1: any, _2: any) => "no data" : dollarFormatter,
+                style: {
+                    fontSize: '13px',
+                    fontWeight: 450
+                },
+            },
+            plotOptions: {
+                bar: {
+                    horizontal: false,
+                    borderRadius: 10,
+                    borderRadiusApplication: 'end', // 'around', 'end'
+                    borderRadiusWhenStacked: 'last', // 'all', 'last'
+                    dataLabels: {
+                        position: 'center',
+                        total: {
+                            enabled: true,
+                            style: {
+                                fontSize: '13px',
+                                fontWeight: 450
+                            },
+                        },
+                    }
+                },
+            },
+            xaxis: {
+                categories,
+            },
+            yaxis: {
+                labels: { formatter: expenseSummaries.length === 0 ? (_1: any, _2: any) => "no data" : dollarFormatter }, // two decimal points
+            },
+            fill: {
+                opacity: 1
+            }
+        };
+    } else {
+        series = Array.from({ length: categories.length }, () => 0);
+        for (const expense of expenseSummaries) {
+            const index = categories.indexOf(categoryForAccount[expense.account]);
+            series[index] += expense.amount;
         }
-    };
+
+        options = {
+            series: series,
+            chart: {
+                width: 380,
+                type: 'pie',
+            },
+            labels: categories,
+            responsive: [{
+                breakpoint: 480,
+                options: {
+                    chart: {
+                        width: 200
+                    },
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }]
+        };
+    }
 
     if (series.length === 0) {
-        series.push({ name: "", data: [] });
+        if (bar) {
+            series.push({ name: "", data: [] });
+        }
     }
+
+    console.debug(options, series);
 
     return (
         <div>
             <div id="chart">
-                <ReactApexChart options={options as ApexOptions} series={series} type="bar" height={height} />
+                <ReactApexChart options={options as ApexOptions} series={series} type={bar ? "bar" : "pie"} height={height} />
             </div>
             <div id="html-dist"></div>
         </div>
@@ -238,12 +271,19 @@ const Dashboard: React.FC<DashboardProps> = ({ exePath, filePath }) => {
     const [period, setPeriod] = useState<PeriodType>(PeriodType.Month);
     const [startDate, setStartDate] = useState<MyDate>(fromMoment(moment().startOf(period.toLowerCase() as moment.unitOfTime.StartOf)));
     const [collectBottomLevel, setCollectBottomLevel] = useState<boolean>(false);
+    const [barChart, setBarChart] = useState<boolean>(true);
+    const [chartKey, setChartKey] = useState<number>(0);
 
     const settingsButtonOptions = {
         collectBottomLevel: {
             label: "Collect Bottom Level Accounts",
             enabled: collectBottomLevel,
             onChange: (enabled: boolean) => setCollectBottomLevel(enabled),
+        },
+        barChart: {
+            label: "Bar Chart",
+            enabled: barChart,
+            onChange: (enabled: boolean) => { setBarChart(enabled); setChartKey(chartKey + 1); },
         },
     };
 
@@ -261,7 +301,7 @@ const Dashboard: React.FC<DashboardProps> = ({ exePath, filePath }) => {
     }, [startDate]);
 
     return <div>
-        <div className="flex space-x-2 mb-4 justify-end">
+        <div className="flex space-x-2 mb-4 justify-end align-center">
             <MyDatePicker mode={period} date={toMoment(startDate).toDate()} setDate={(date: Date) => { setStartDate(fromMoment(moment(date))) }} />
             <Picker
                 options={['Week', 'Month', 'Year']}
@@ -270,7 +310,9 @@ const Dashboard: React.FC<DashboardProps> = ({ exePath, filePath }) => {
             />
             <SettingsButton options={settingsButtonOptions} />
         </div>
-        {ApexChart(output, collectBottomLevel)}
+        <div key={chartKey}>
+            {ApexChart(output, barChart, collectBottomLevel)}
+        </div>
     </div>
 };
 
