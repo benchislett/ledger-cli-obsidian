@@ -159,14 +159,11 @@ const ApexChart = (expenseSummaries: ExpenseSummary[], collectBottomLevel: boole
         categoryForAccount[expense.account] = category;
     }
 
-    const stack_categories = true;
-    if (stack_categories) {
-        for (const expense of expenseSummaries) {
-            let subseries = Array.from({ length: categories.length }, () => 0);
-            const index = categories.indexOf(categoryForAccount[expense.account]);
-            subseries[index] = expense.amount;
-            series.push({ name: expense.account, data: subseries });
-        }
+    for (const expense of expenseSummaries) {
+        let subseries = Array.from({ length: categories.length }, () => 0);
+        const index = categories.indexOf(categoryForAccount[expense.account]);
+        subseries[index] = expense.amount;
+        series.push({ name: expense.account, data: subseries });
     }
 
     const options = {
@@ -207,7 +204,7 @@ const ApexChart = (expenseSummaries: ExpenseSummary[], collectBottomLevel: boole
             },
         },
         xaxis: {
-            categories: stack_categories ? categories : accounts,
+            categories,
         },
         yaxis: {
             labels: { formatter: expenseSummaries.length === 0 ? (_1: any, _2: any) => "no data" : dollarFormatter }, // two decimal points
