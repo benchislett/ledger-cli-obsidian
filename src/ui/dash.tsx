@@ -1,7 +1,9 @@
 import React from 'react';
 import { useState, useEffect } from 'react';
+import { Settings } from 'lucide-react';
 
 import ReactApexChart from 'react-apexcharts';
+
 
 import { invoke_ledger } from '../invoke';
 
@@ -11,7 +13,9 @@ import DatePicker from "react-datepicker";
 import moment from 'moment';
 
 import "react-datepicker/dist/react-datepicker.css";
-import { start } from 'repl';
+
+import { SettingsButton } from './settingsDropdown';
+
 
 enum PeriodType {
     Week = "Week",
@@ -23,16 +27,16 @@ const MyDatePicker: React.FC<{ mode: PeriodType, date: Date, setDate: (_: Date) 
     const settings: any = {};
     switch (mode) {
         case PeriodType.Week:
-            settings["dateFormat"]= "DD/MM/yyyy"
+            settings["dateFormat"] = "dd MMM, yyyy"
             settings["showWeekNumbers"] = true;
             settings["showWeekPicker"] = true;
             break;
         case PeriodType.Month:
-            settings["dateFormat"]= "MM/yyyy"
+            settings["dateFormat"] = "MMM yyyy"
             settings["showMonthYearPicker"] = true;
             break;
         case PeriodType.Year:
-            settings["dateFormat"]= "yyyy"
+            settings["dateFormat"] = "yyyy"
             settings["showYearPicker"] = true;
             break;
     };
@@ -138,36 +142,29 @@ const Picker: React.FC<{
 };
 
 
-const ApexChart = (expenseSummaries: ExpenseSummary[]) => {
+const ApexChart = (expenseSummaries: ExpenseSummary[], collectBottomLevel: boolean = false) => {
     const height = 600;
     let series = [];
     let categories: string[] = [];
-    let accounts: string[] = [];
+    let categoryForAccount: { [account: string]: string } = {};
     let i = 0;
     for (const expense of expenseSummaries) {
-        const category = expense.account.split(':').slice(0, 2).join(':');
+        let category = expense.account.split(':').slice(0, 2).join(':');
+        if (collectBottomLevel && category == expense.account) {
+            category = "Expenses:Other";
+        }
         if (!categories.includes(category)) {
             categories.push(category);
         }
-        accounts.push(expense.account);
+        categoryForAccount[expense.account] = category;
     }
 
     const stack_categories = true;
     if (stack_categories) {
         for (const expense of expenseSummaries) {
             let subseries = Array.from({ length: categories.length }, () => 0);
-            for (let i = 0; i < categories.length; i++) {
-                if (expense.account.startsWith(categories[i])) {
-                    subseries[i] = expense.amount;
-                }
-            }
-            series.push({ name: expense.account, data: subseries });
-        }
-    } else {
-        let i = 0;
-        for (const expense of expenseSummaries) {
-            let subseries = Array.from({ length: accounts.length }, () => 0);
-            subseries[i++] = expense.amount;
+            const index = categories.indexOf(categoryForAccount[expense.account]);
+            subseries[index] = expense.amount;
             series.push({ name: expense.account, data: subseries });
         }
     }
@@ -223,7 +220,7 @@ const ApexChart = (expenseSummaries: ExpenseSummary[]) => {
     if (series.length === 0) {
         series.push({ name: "", data: [] });
     }
-    
+
     return (
         <div>
             <div id="chart">
@@ -243,6 +240,15 @@ const Dashboard: React.FC<DashboardProps> = ({ exePath, filePath }) => {
     const [output, setOutput] = useState<ExpenseSummary[]>([]);
     const [period, setPeriod] = useState<PeriodType>(PeriodType.Month);
     const [startDate, setStartDate] = useState<MyDate>(fromMoment(moment().startOf(period.toLowerCase() as moment.unitOfTime.StartOf)));
+    const [collectBottomLevel, setCollectBottomLevel] = useState<boolean>(false);
+
+    const settingsButtonOptions = {
+        collectBottomLevel: {
+            label: "Collect Bottom Level Accounts",
+            enabled: collectBottomLevel,
+            onChange: (enabled: boolean) => setCollectBottomLevel(enabled),
+        },
+    };
 
     useEffect(() => {
         async function getOutput() {
@@ -259,14 +265,15 @@ const Dashboard: React.FC<DashboardProps> = ({ exePath, filePath }) => {
 
     return <div>
         <div className="flex space-x-2 mb-4 justify-end">
-            <MyDatePicker mode={period} date={toMoment(startDate).toDate()} setDate={(date: Date) => {setStartDate(fromMoment(moment(date)))}} />
+            <MyDatePicker mode={period} date={toMoment(startDate).toDate()} setDate={(date: Date) => { setStartDate(fromMoment(moment(date))) }} />
             <Picker
                 options={['Week', 'Month', 'Year']}
                 selectedOption={period}
-                onSelect={(newPeriod: string) => {setPeriod(newPeriod as PeriodType); setStartDate(fromMoment(toMoment(startDate).startOf(newPeriod.toLowerCase() as moment.unitOfTime.StartOf)))}}
+                onSelect={(newPeriod: string) => { setPeriod(newPeriod as PeriodType); setStartDate(fromMoment(toMoment(startDate).startOf(newPeriod.toLowerCase() as moment.unitOfTime.StartOf))) }}
             />
+            <SettingsButton options={settingsButtonOptions} />
         </div>
-        {ApexChart(output)}
+        {ApexChart(output, collectBottomLevel)}
     </div>
 };
 
