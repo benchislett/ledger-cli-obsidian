@@ -229,17 +229,11 @@ const ApexChart = (expenseSummaries: ExpenseSummary[], bar: boolean, collectBott
                 type: 'pie',
             },
             labels: categories,
-            responsive: [{
-                breakpoint: 480,
-                options: {
-                    chart: {
-                        width: 200
-                    },
-                    legend: {
-                        position: 'bottom'
-                    }
+            tooltip: {
+                y: {
+                    formatter: dollarFormatter,
                 }
-            }]
+            }
         };
     }
 
