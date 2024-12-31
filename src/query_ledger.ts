@@ -1,8 +1,19 @@
 import { invoke_ledger } from "./invoke_ledger_cli";
 
-interface ExpenseSummary {
+interface BalanceRecord {
     account: string;
     amount: number;
+}
+
+interface AccountBalances {
+    [account: string]: number;
+}
+
+function collateBalanceRecords(records: BalanceRecord[]): AccountBalances {
+    return records.reduce((acc: AccountBalances, record: BalanceRecord) => {
+        acc[record.account] = (acc[record.account] || 0) + record.amount;
+        return acc;
+    }, {});
 }
 
 /**
@@ -23,9 +34,9 @@ async function query_accounts(exePath: string, filePath: string): Promise<string
  * @param filePath Path to the transactions file to be used
  * @param startDate: Start date of the range
  * @param endDate: End date of the range
- * @returns Promise<ExpenseSummary[]> Promise that resolves to the list of accounts with their balances over the range
+ * @returns Promise<AccountBalances> Promise that resolves to the balances for each account over the range
  */
-async function query_balance_range(exePath: string, filePath: string, startDate: string, endDate: string): Promise<ExpenseSummary[]> {
+async function query_balance_range(exePath: string, filePath: string, startDate: string, endDate: string): Promise<AccountBalances> {
     const rawOutput = await invoke_ledger(exePath, filePath, ['bal', "--period", `'from ${startDate} to ${endDate}'`, "--format", "\"%(account),%(amount)\\n\"", "--flat", "--basis"]);
     const expenses = rawOutput.trim().split("\n").map((line: string) => {
         const [account, ...rest] = line.split(",");
@@ -35,9 +46,9 @@ async function query_balance_range(exePath: string, filePath: string, startDate:
             return { account: account.trim(), amount };
         }
         return null;
-    }).filter((expense: ExpenseSummary | null) => expense !== null) as ExpenseSummary[];
-    return expenses;
+    }).filter((expense: BalanceRecord | null) => expense !== null) as BalanceRecord[];
+    return collateBalanceRecords(expenses);
 }
 
-export { query_accounts, query_balance_range };
-export type { ExpenseSummary };
+export { query_accounts, query_balance_range, collateBalanceRecords };
+export type { BalanceRecord, AccountBalances };

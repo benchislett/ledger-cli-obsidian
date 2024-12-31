@@ -17,7 +17,7 @@ import { MyDate, formatDate, fromMoment, spanNext, toMoment } from '../date';
 
 import { PeriodType, MyDatePicker } from './datePicker';
 
-import { ExpenseSummary, query_balance_range } from 'src/query_ledger';
+import { BalanceRecord, query_balance_range } from 'src/query_ledger';
 
 function dollarFormatter(n: number | string, _?: any): string {
     if (typeof n === "string") {
@@ -27,7 +27,7 @@ function dollarFormatter(n: number | string, _?: any): string {
     }
 }
 
-const ExpenseChart = (expenseSummaries: ExpenseSummary[], bar: boolean, collectBottomLevel: boolean) => {
+const ExpenseChart = (expenseSummaries: BalanceRecord[], bar: boolean, collectBottomLevel: boolean) => {
     const height = 480;
     let series: any = [];
     let options: any = {};
@@ -142,13 +142,13 @@ const ExpenseChart = (expenseSummaries: ExpenseSummary[], bar: boolean, collectB
     );
 }
 
-const MultiExpenseChart = (expenseSummarySets: ExpenseSummary[][], collectBottomLevel: boolean) => {
+const MultiExpenseChart = (BalanceRecordSets: BalanceRecord[][], collectBottomLevel: boolean) => {
     const height = 300;
     let series: any = [];
     let options: any = {};
     let categories: string[] = [];
     let categoryForAccount: { [account: string]: string } = {};
-    for (const expenseSummaries of expenseSummarySets) {
+    for (const expenseSummaries of BalanceRecordSets) {
         for (const expense of expenseSummaries) {
             let category = expense.account.split(':').slice(0, 2).join(':');
             if (collectBottomLevel && category == expense.account) {
@@ -163,20 +163,20 @@ const MultiExpenseChart = (expenseSummarySets: ExpenseSummary[][], collectBottom
         }
     }
 
-    let dateNames = Array.from({ length: expenseSummarySets.length }, (_, i) => `2024/${i + 1}/01`);
+    let dateNames = Array.from({ length: BalanceRecordSets.length }, (_, i) => `2024/${i + 1}/01`);
 
-    while (expenseSummarySets.length > 0 && expenseSummarySets[0].length === 0) {
-        expenseSummarySets.shift();
+    while (BalanceRecordSets.length > 0 && BalanceRecordSets[0].length === 0) {
+        BalanceRecordSets.shift();
         dateNames.shift();
     }
 
     for (const category of categories) {
-        series.push({ name: category, data: Array.from({ length: expenseSummarySets.length }, () => 0) });
+        series.push({ name: category, data: Array.from({ length: BalanceRecordSets.length }, () => 0) });
     }
 
 
     let i = 0;
-    for (const expenseSummaries of expenseSummarySets) {
+    for (const expenseSummaries of BalanceRecordSets) {
         for (const expense of expenseSummaries) {
             const index = categories.indexOf(categoryForAccount[expense.account]);
             series[index]["data"][i] += expense.amount;
@@ -197,7 +197,7 @@ const MultiExpenseChart = (expenseSummarySets: ExpenseSummary[][], collectBottom
             }
         },
         dataLabels: {
-            formatter: expenseSummarySets.length === 0 ? (_1: any, _2: any) => "no data" : dollarFormatter,
+            formatter: BalanceRecordSets.length === 0 ? (_1: any, _2: any) => "no data" : dollarFormatter,
             style: {
                 fontSize: '13px',
                 fontWeight: 450
@@ -226,7 +226,7 @@ const MultiExpenseChart = (expenseSummarySets: ExpenseSummary[][], collectBottom
             // labels: { formatter: (s: string) => s.split(':').slice(-1)[0] }
         },
         yaxis: {
-            labels: { formatter: expenseSummarySets.length === 0 ? (_1: any, _2: any) => "no data" : dollarFormatter }, // two decimal points
+            labels: { formatter: BalanceRecordSets.length === 0 ? (_1: any, _2: any) => "no data" : dollarFormatter }, // two decimal points
         },
         legend: {
             formatter: (s: string) => s.split(':').slice(-1)[0]
@@ -258,7 +258,7 @@ interface DashboardProps {
 }
 
 const SingleExpenseChart: React.FC<DashboardProps> = ({ exePath, filePath }) => {
-    const [output, setOutput] = useState<ExpenseSummary[]>([]);
+    const [output, setOutput] = useState<BalanceRecord[]>([]);
     const [period, setPeriod] = useState<PeriodType>(PeriodType.Month);
     const [startDate, setStartDate] = useState<MyDate>(fromMoment(moment().startOf(period.toLowerCase() as moment.unitOfTime.StartOf)));
     const [collectBottomLevel, setCollectBottomLevel] = useState<boolean>(false);
@@ -285,7 +285,7 @@ const SingleExpenseChart: React.FC<DashboardProps> = ({ exePath, filePath }) => 
             const endDateString = formatDate(spanNext(startDate, period));
             const expenses = await query_balance_range(exePath, filePath, startDateString, endDateString);
             console.debug("Parsed expenses: ", JSON.stringify(expenses));
-            setOutput(expenses.filter((expense: ExpenseSummary) => expense.account.startsWith("Expenses:")));
+            setOutput(expenses.filter((expense: BalanceRecord) => expense.account.startsWith("Expenses:")));
         }
         getOutput();
     }, [startDate]);
@@ -307,7 +307,7 @@ const SingleExpenseChart: React.FC<DashboardProps> = ({ exePath, filePath }) => 
 };
 
 const MonthlyExpenseChart: React.FC<DashboardProps> = ({ exePath, filePath }) => {
-    const [output, setOutput] = useState<ExpenseSummary[][]>([]);
+    const [output, setOutput] = useState<BalanceRecord[][]>([]);
 
     useEffect(() => {
         async function getOutput() {
@@ -319,7 +319,7 @@ const MonthlyExpenseChart: React.FC<DashboardProps> = ({ exePath, filePath }) =>
                 date = next;
             }
             const allOutputs = await Promise.all(promises);
-            setOutput(allOutputs.map((expenses: ExpenseSummary[]) => expenses.filter((expense: ExpenseSummary) => expense.account.startsWith("Expenses:"))));
+            setOutput(allOutputs.map((expenses: BalanceRecord[]) => expenses.filter((expense: BalanceRecord) => expense.account.startsWith("Expenses:"))));
         }
         getOutput();
     }, []);
@@ -389,7 +389,7 @@ const NetWorthChart: React.FC<DashboardProps> = ({ exePath, filePath }) => {
             }
             const allOutputs = await Promise.all(promises);
             console.debug("All outputs: ", allOutputs);
-            setOutput(allOutputs.map((expenses: ExpenseSummary[]) => expenses.filter((expense: ExpenseSummary) => expense.account.startsWith("Assets:") || expense.account.startsWith("Liabilities:")).reduce((acc: number, expense: ExpenseSummary) => acc + expense.amount, 0)));
+            setOutput(allOutputs.map((expenses: BalanceRecord[]) => expenses.filter((expense: BalanceRecord) => expense.account.startsWith("Assets:") || expense.account.startsWith("Liabilities:")).reduce((acc: number, expense: BalanceRecord) => acc + expense.amount, 0)));
         }
         getOutput();
     }, []);

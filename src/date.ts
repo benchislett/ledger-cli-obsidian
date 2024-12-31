@@ -7,7 +7,17 @@ interface MyDate {
     day: number;
 }
 
-function formatDate(date: MyDate): string {
+function currentDate() {
+    return fromMoment(moment());
+}
+
+function formatDate(date: MyDate, period?: PeriodType): string {
+    if (period == PeriodType.Month) {
+        return `${date.year}/${date.month}`;
+    } else if (period == PeriodType.Year) {
+        return `${date.year}`;
+    }
+
     return `${date.year}/${date.month}/${date.day}`;
 }
 
@@ -19,13 +29,21 @@ function fromMoment(m: moment.Moment): MyDate {
     return { year: m.year(), month: m.month() + 1, day: m.date() };
 }
 
+function spanStart(date: MyDate, period: PeriodType): MyDate {
+    return fromMoment(toMoment(date).startOf(period.toLowerCase() as moment.unitOfTime.StartOf));
+}
+
+function spanEnd(date: MyDate, period: PeriodType): MyDate {
+    return fromMoment(toMoment(date).endOf(period.toLowerCase() as moment.unitOfTime.StartOf));
+}
+
 function spanNext(date: MyDate, period: PeriodType): MyDate {
-    console.debug(toMoment(date));
-    console.debug(toMoment(date).add(1, period.toLowerCase() as moment.DurationInputArg2));
-    const out = fromMoment(toMoment(date).add(1, period.toLowerCase() as moment.DurationInputArg2));
-    console.debug(out);
     return fromMoment(toMoment(date).add(1, period.toLowerCase() as moment.DurationInputArg2));
 }
 
-export { formatDate, toMoment, fromMoment, spanNext };
+function spanPrev(date: MyDate, period: PeriodType): MyDate {
+    return fromMoment(toMoment(date).subtract(1, period.toLowerCase() as moment.DurationInputArg2));
+}
+
+export { formatDate, currentDate, toMoment, fromMoment, spanStart, spanEnd, spanNext, spanPrev };
 export type { MyDate };
