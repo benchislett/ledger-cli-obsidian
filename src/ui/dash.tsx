@@ -28,7 +28,7 @@ function dollarStrFormatter(s: string): string {
 }
 
 const ApexChart = (expenseSummaries: ExpenseSummary[], bar: boolean, collectBottomLevel: boolean) => {
-    const height = 600;
+    const height = 520;
     let series: any = [];
     let options: any = {};
     let categories: string[] = [];
@@ -92,9 +92,13 @@ const ApexChart = (expenseSummaries: ExpenseSummary[], bar: boolean, collectBott
             },
             xaxis: {
                 categories,
+                labels: { formatter: (s: string) => s.split(':').slice(-1)[0]}
             },
             yaxis: {
                 labels: { formatter: expenseSummaries.length === 0 ? (_1: any, _2: any) => "no data" : dollarFormatter }, // two decimal points
+            },
+            legend: {
+                formatter: (s: string) => s.split(':').slice(-1)[0]
             },
             fill: {
                 opacity: 1
@@ -178,20 +182,64 @@ const Dashboard: React.FC<DashboardProps> = ({ exePath, filePath }) => {
         getOutput();
     }, [startDate]);
 
-    return <div>
-        <div className="flex space-x-2 mb-4 justify-end align-center">
-            <MyDatePicker mode={period} date={toMoment(startDate).toDate()} setDate={(date: Date) => { setStartDate(fromMoment(moment(date))) }} />
-            <MultiButton
-                options={['Week', 'Month', 'Year']}
-                selectedOption={period}
-                onSelect={(newPeriod: string) => { setPeriod(newPeriod as PeriodType); setStartDate(fromMoment(toMoment(startDate).startOf(newPeriod.toLowerCase() as moment.unitOfTime.StartOf))) }}
-            />
-            <SettingsButton options={settingsButtonOptions} />
+    // skeleton layout with flex grid, two rows, one with two div containers and one with three.
+    return <div className="min-h-screen bg-gray-50 p-4">
+        {/* First row - two cards */}
+        <div className="flex gap-4 mb-4">
+            <div className="flex-1 bg-white rounded-lg shadow-md p-6">
+                {/* First card content */}
+                <div className="h-64">Card 1</div>
+            </div>
+
+            <div className="flex-1 bg-white rounded-lg shadow-md p-6">
+                {/* Second card content */}
+                <div className="h-64">Card 2</div>
+            </div>
         </div>
-        <div key={chartKey}>
-            {ApexChart(output, barChart, collectBottomLevel)}
+
+        {/* Second row - three cards */}
+        <div className="flex gap-4">
+            <div className="basis-[30%] bg-white rounded-lg shadow-md p-6">
+                {/* Third card content */}
+                <div className="h-48">Card 3</div>
+            </div>
+
+            {/* <div className="flex-1 bg-white rounded-lg shadow-md p-6">
+                <div className="h-48">Card 4</div>
+            </div> */}
+
+            <div className="basis-[70%] bg-white rounded-lg shadow-md p-6">
+                <div>
+                    <div className="flex space-x-2 mb-4 justify-end align-center">
+                        <MyDatePicker mode={period} date={toMoment(startDate).toDate()} setDate={(date: Date) => { setStartDate(fromMoment(moment(date))) }} />
+                        <MultiButton
+                            options={['Week', 'Month', 'Year']}
+                            selectedOption={period}
+                            onSelect={(newPeriod: string) => { setPeriod(newPeriod as PeriodType); setStartDate(fromMoment(toMoment(startDate).startOf(newPeriod.toLowerCase() as moment.unitOfTime.StartOf))) }}
+                        />
+                        <SettingsButton options={settingsButtonOptions} />
+                    </div>
+                    <div key={chartKey}>
+                        {ApexChart(output, barChart, collectBottomLevel)}
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
+    // return <div>
+    //     <div className="flex space-x-2 mb-4 justify-end align-center">
+    //         <MyDatePicker mode={period} date={toMoment(startDate).toDate()} setDate={(date: Date) => { setStartDate(fromMoment(moment(date))) }} />
+    //         <MultiButton
+    //             options={['Week', 'Month', 'Year']}
+    //             selectedOption={period}
+    //             onSelect={(newPeriod: string) => { setPeriod(newPeriod as PeriodType); setStartDate(fromMoment(toMoment(startDate).startOf(newPeriod.toLowerCase() as moment.unitOfTime.StartOf))) }}
+    //         />
+    //         <SettingsButton options={settingsButtonOptions} />
+    //     </div>
+    //     <div key={chartKey}>
+    //         {ApexChart(output, barChart, collectBottomLevel)}
+    //     </div>
+    // </div>
 };
 
 export { Dashboard };

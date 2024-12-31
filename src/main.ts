@@ -89,10 +89,8 @@ export class LedgerView extends TextFileView {
 		if (this.currentFilePath) {
 			console.debug('Ledger: Dashboard file is available');
 			const root = createRoot(contentEl!);
+			// contentEl.setAttribute('style', 'overflow: hidden');
 			root.render(React.createElement(Dashboard, { exePath: this.plugin.settings.ledgerPath, filePath: this.plugin.rootPath() + "/" + this.currentFilePath }));
-			// contentEl.empty();
-			// const span = contentEl.createSpan();
-			// span.setText('Content...');
 		} else {
 			console.debug("Ledger: Dashboard view doesn't have a file yet");
 			contentEl.empty();
