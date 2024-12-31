@@ -19,16 +19,16 @@ import { PeriodType, MyDatePicker } from './datePicker';
 
 import { ExpenseSummary, query_balance_range } from 'src/query_ledger';
 
-function dollarFormatter(n: number, _?: any): string {
-    return "$" + n.toFixed(2);
-}
-
-function dollarStrFormatter(s: string): string {
-    return "$" + Number.parseFloat(s).toFixed(2);
+function dollarFormatter(n: number | string, _?: any): string {
+    if (typeof n === "string") {
+        return "$" + Number.parseFloat(n).toFixed(2);
+    } else {
+        return "$" + n.toFixed(2);
+    }
 }
 
 const ExpenseChart = (expenseSummaries: ExpenseSummary[], bar: boolean, collectBottomLevel: boolean) => {
-    const height = 520;
+    const height = 480;
     let series: any = [];
     let options: any = {};
     let categories: string[] = [];
@@ -113,7 +113,6 @@ const ExpenseChart = (expenseSummaries: ExpenseSummary[], bar: boolean, collectB
         options = {
             series: series,
             chart: {
-                width: 380,
                 type: 'pie',
             },
             labels: categories,
@@ -164,7 +163,7 @@ const MultiExpenseChart = (expenseSummarySets: ExpenseSummary[][], collectBottom
         }
     }
 
-    let dateNames = Array.from({ length: expenseSummarySets.length }, (_, i) => `2024/${i+1}/01`);
+    let dateNames = Array.from({ length: expenseSummarySets.length }, (_, i) => `2024/${i + 1}/01`);
 
     while (expenseSummarySets.length > 0 && expenseSummarySets[0].length === 0) {
         expenseSummarySets.shift();
@@ -330,27 +329,96 @@ const MonthlyExpenseChart: React.FC<DashboardProps> = ({ exePath, filePath }) =>
     </div>;
 };
 
+const NetWorthLineChart: React.FC<{ output: number[] }> = ({ output }) => {
+    const dateNames = Array.from({ length: 12 }, (_, i) => `2024/${i + 1}/01`);
+    while (output.length > 0 && output[0] === 0) {
+        output.shift();
+        dateNames.shift();
+    }
+
+    const height = 300;
+    const series = [{ name: "Net Worth", data: output }];
+    const options = {
+        chart: {
+            type: 'area',
+            height: height,
+            zoom: {
+                enabled: false
+            }
+        },
+        dataLabels: {
+            enabled: false
+        },
+        stroke: {
+            curve: 'straight'
+        },
+        title: {
+            text: 'Net Worth',
+            align: 'left'
+        },
+        labels: dateNames,
+        xaxis: {
+            type: 'datetime',
+        },
+        yaxis: {
+            labels: {
+                formatter: dollarFormatter
+            }
+        },
+    };
+
+    return <div>
+        <div id="chart">
+            <ReactApexChart options={options as ApexOptions} series={series} type={"area"} height={height} />
+        </div>
+        <div id="html-dist"></div>
+    </div>
+};
+
+const NetWorthChart: React.FC<DashboardProps> = ({ exePath, filePath }) => {
+    const [output, setOutput] = useState<number[]>([]);
+
+    useEffect(() => {
+        async function getOutput() {
+            const promises = [];
+            let date: MyDate = { year: 2024, month: 1, day: 1 };
+            let next = date;
+            for (let i = 0; i < 12; i++) {
+                next = spanNext(next, PeriodType.Month);
+                promises.push(query_balance_range(exePath, filePath, formatDate(date), formatDate(next)));
+            }
+            const allOutputs = await Promise.all(promises);
+            console.debug("All outputs: ", allOutputs);
+            setOutput(allOutputs.map((expenses: ExpenseSummary[]) => expenses.filter((expense: ExpenseSummary) => expense.account.startsWith("Assets:") || expense.account.startsWith("Liabilities:")).reduce((acc: number, expense: ExpenseSummary) => acc + expense.amount, 0)));
+        }
+        getOutput();
+    }, []);
+
+    return <div>
+        {<NetWorthLineChart output={output} />}
+    </div>;
+};
+
 const Dashboard: React.FC<DashboardProps> = ({ exePath, filePath }) => {
     // skeleton layout with flex grid, two rows, one with two div containers and one with three.
     return <div className="min-h-screen bg-gray-50 p-4">
-        {/* First row - two cards */}
         <div className="flex gap-4 mb-4">
-
-            <div className="flex-1 bg-white rounded-lg shadow-md p-6">
-                {/* Second card content */}
-                <MonthlyExpenseChart exePath={exePath} filePath={filePath} />
-            </div>
-        </div>
-
-        {/* Second row - three cards */}
-        <div className="flex gap-4">
             <div className="basis-[30%] bg-white rounded-lg shadow-md p-6">
-                {/* Third card content */}
                 <div className="h-48">Card 3</div>
             </div>
 
             <div className="basis-[70%] bg-white rounded-lg shadow-md p-6">
                 <SingleExpenseChart exePath={exePath} filePath={filePath} />
+            </div>
+        </div>
+
+        <div className="flex gap-4">
+            <div className="flex-1 bg-white rounded-lg shadow-md p-6">
+                <NetWorthChart exePath={exePath} filePath={filePath} />
+            </div>
+
+            <div className='flex-1 bg-white rounded-lg shadow-md p-6'>
+            X
             </div>
         </div>
     </div>
